@@ -115,7 +115,7 @@ class Communication(object):
         self.sync_data_ready.clear()
         self.write_command(command,idn)
         self.sync_data_ready.wait(self.response_timeout)
-        if self.devices.get(idn) is not None:
+        if not bool(self.devices.get(idn).get('sync')):
             resp=self.devices.get(idn).get('sync').pop()
             trace.debug("Command: \""+str(command)+"\" successfully sent. Response: \""+str(resp)+"\"")
             return resp
@@ -133,12 +133,12 @@ class Communication(object):
         self.sync_data_ready.clear()
         self.write_command(command,idn)
         self.sync_data_ready.wait(self.response_timeout)
-        if self.devices.get(idn) is not None:
+        if not bool(self.devices.get(idn).get('sync')):
             resp=self.devices.get(idn).get('sync').pop()
             if resp.rsplit()[0] == command.rsplit()[0]:
                 trace.debug("Command: \""+str(command)+"\" successfully sent. Response: \""+str(resp)+"\"")
             else:
-                trace.debug("Wrong response for command: \"" + str(command) + "\". Response: \"" + str(resp) + "\" , expected: \""+str(command.rsplit()[0]))
+                trace.error("Wrong response for command: \"" + str(command) + "\". Response: \"" + str(resp) + "\" , expected: \""+str(command.rsplit()[0]))
             if len(resp.rsplit()) > 1:
                 return resp.rsplit()[1]
             else:
@@ -173,7 +173,7 @@ class Communication(object):
             value <<= 4
             value |= nibble
 
-        return (float(value) / 256 if shift else float(value))
+        return (float(value) / 256   if shift else float(value))* 6.25 / 65536
 
     def read_line(self, line):
         coms = line.split(b'\r')
