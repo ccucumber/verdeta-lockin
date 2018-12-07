@@ -42,11 +42,62 @@ def meas_diff():
     potentiostat.io_clear(3)
     return result
 
+def meas_lockin_d(kom):
+    kom.data=[]
+    kom.write_command_stdr("START", 249)
+    time.sleep(2.2)
+    kom.write_command_stdr("STOP", 249)
+    time.sleep(.1)
+    trace.info("Data in buffer: "+str(len(kom.data)))
+    first=None
+    pha=0
+    s = np.array(kom.data)[:, (0, 3)]
+    start=0
+    mid=0
+    stop=0
+    osc_count=0
+    for i in range(len(s)):
+        if(first is None): first=s[i,1]
+        else:
+            if s[i,1] != first:
+                start=i
+                mid=i
+                stop=i
+                break
+
+    s=s[start:]
+    start=0
+    first = s[0, 1]
+    trace.debug("Start index: "+str(start))
+
+    for i in range(len(s)):
+        if s[i, 1] != first:
+            first=s[i,1]
+            pha+=1
+            if pha==2:
+                pha=0
+                if mid-start == i-mid:
+                    start=i
+                    stop=i
+                    osc_count+=1
+                    trace.debug("Found osc prd="+str(start-mid))
+                else:
+                    trace.error("Inconsistent prd: "+str(start)+" "+str(mid)+" "+str(stop))
+            mid = i
+    trace.info("Oscillations: "+str(osc_count)+" Samples left: "+str(len(s)-stop))
+
+    mult=2*(s[:stop,1]-0.5)
+    sig=s[:stop,0]
+
+
+    return np.dot(sig,mult)/stop
+
+
 
 if __name__ == "__main__":
     trace.basicConfig(format="[%(asctime)s](%(module)s:%(funcName)s:%(lineno)d) %(message)s",
                       datefmt='%I:%M:%S',
-                      level=trace.DEBUG)
+                      level=trace.INFO)
     kom = fotonowy.Communication()
     kom.connect( port_name="/dev/ttyUSB0")
     monochromator=fotonowy.Monochromator(kom)
@@ -54,70 +105,12 @@ if __name__ == "__main__":
 
 
     monochromator.shutter_open()
-    print("Range "+ str(potentiostat.set_range(5)))
+    print("Range "+ str(potentiostat.set_range(2)))
     potentiostat.set_avg(20)
     potentiostat.set_freq(1000)
-    potentiostat.set_volt(0)#,10,3.5)
-    kom.write_command_stdr("LOCKIN 200 0", 250)
-    kom.write_command_stdr("START", 249)
-    time.sleep(0.5)
-    kom.write_command_stdr("STOP", 249)
-    time.sleep(0.1)
-
-    #for i in range(10):
-    #   print(potentiostat.get_current_value()*1e9)
-
-    root = Tk.Tk()
-    root.wm_title("PLOT")
-
-    f = Figure(figsize=(5, 4), dpi=100)
-    a = f.add_subplot(111)
-    t = np.arange(len(kom.data))*potentiostat.time_multiplier
-    s = np.array(kom.data)[:,0]#*potentiostat.range_multiplier
-    f1 = np.array(kom.data)[:,1]
-    f2 = np.array(kom.data)[:,2]
-    f3 = np.array(kom.data)[:,3]
-
-    print(s)
-    print(len(kom.data))
+    potentiostat.set_volt(2)#,10,3.5)
 
 
-    # save data to text file
-
-    timestamp = time.strftime("%Y%m%d-%H%M%S")
-
-    np.savetxt('raw_data_' + timestamp + '.txt', np.c_[t,s], header='# t[s] \t U[V]')
-
-
-    a.plot(t, s) #, np.sin(2 * np.pi * t / 50),t , np.cos(2 * np.pi * t / 50))
-
-    # a tk.DrawingArea
-    canvas = FigureCanvasTkAgg(f, master=root)
-    canvas.show()
-    canvas.get_tk_widget().pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
-
-    toolbar = NavigationToolbar2TkAgg(canvas, root)
-    toolbar.update()
-    canvas._tkcanvas.pack(side=Tk.TOP, fill=Tk.BOTH, expand=1)
-
-
-    def on_key_event(event):
-        print('you pressed %s' % event.key)
-        key_press_handler(event, canvas, toolbar)
-
-
-    canvas.mpl_connect('key_press_event', on_key_event)
-
-
-    def _quit():
-        root.quit()  # stops mainloop
-        root.destroy()  # this is necessary on Windows to prevent
-        # Fatal Python Error: PyEval_RestoreThread: NULL tstate
-
-
-    button = Tk.Button(master=root, text='Quit', command=_quit)
-    button.pack(side=Tk.BOTTOM)
-
-    Tk.mainloop()
-    # If you put root.destroy() here, it will cause an error if
-    # the window is closed with the window manager.
+    for i in range(10):
+        kom.write_command_stdr("LOCKIN 200 0", 250)
+        print(meas_lockin_d(kom))

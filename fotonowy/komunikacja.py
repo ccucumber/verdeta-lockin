@@ -163,7 +163,7 @@ class Communication(object):
         value = (-1 if c >= ord('8') else 0)  # test for sign bit (in hex digit)
         shift = False
 
-        for c in list(seq):
+        for c in list(seq)[3:]:
             if (c & 0x80):
                 c &= 0x7F
                 shift = True
@@ -186,7 +186,7 @@ class Communication(object):
                 value = self.decode_binvalue(com)
                 self.data.append(list(value))
                 self.bin_data_ready.set()
-                trace.info('Data value:'+ str(value))
+                trace.debug('Data value:'+ str(value))
             else:
                 idn, com_type, message = tuple(com.partition(b'.'))
                 # First char after the id number
