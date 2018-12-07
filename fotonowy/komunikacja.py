@@ -151,11 +151,15 @@ class Communication(object):
         # HHHHH - is a 18-bit hex value (should be treated as value with sign)
         # \r - terminating CR
         # Extended format is: CSHHHHHhH\r
+        # 0 ascii 0/1 sin+- X X 0/1 shutter 0/1 shutter~ X X
         # where CSH are as above and h is H (hex digit) with highest bit set
         # this signals the fact that also fractional part is sent so the bit should
         # be cleared, whole value treated as int and later divided by 256
-        ptr = 0
-        c = seq[ptr]
+        flag_count=seq[0]-ord('!')
+        c = seq[1]
+        flag_al=bool(c & 0b01000000)
+        flag_dl=bool(c & 0b00001000)
+        c = seq[2]
         value = (-1 if c >= ord('8') else 0)  # test for sign bit (in hex digit)
         shift = False
 
@@ -173,14 +177,14 @@ class Communication(object):
             value <<= 4
             value |= nibble
 
-        return (float(value) / 256   if shift else float(value))* 6.25 / 65536
+        return (float(value) / 256   if shift else float(value))* 6.25 / 65536,flag_count,flag_al,flag_dl
 
     def read_line(self, line):
         coms = line.split(b'\r')
         for com in coms:
-            if com[0] > 32 and com[0] <= 40:
-                value = self.decode_binvalue(com[2:])
-                self.data.append(value)
+            if com[0] >= ord('!') and com[0] <= ord('('):
+                value = self.decode_binvalue(com)
+                self.data.append(list(value))
                 self.bin_data_ready.set()
                 trace.info('Data value:'+ str(value))
             else:

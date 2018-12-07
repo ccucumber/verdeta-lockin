@@ -29,10 +29,10 @@ def meas_ref():
     return result
 
 def meas_sum():
-    potentiostat.io_set(2)
+    potentiostat.io_set(4)
     time.sleep(.1)
     result = potentiostat.get_current_value()
-    potentiostat.io_clear(2)
+    potentiostat.io_clear(4)
     return result
 
 def meas_diff():
@@ -46,7 +46,7 @@ def meas_diff():
 if __name__ == "__main__":
     trace.basicConfig(format="[%(asctime)s](%(module)s:%(funcName)s:%(lineno)d) %(message)s",
                       datefmt='%I:%M:%S',
-                      level=trace.ERROR)
+                      level=trace.DEBUG)
     kom = fotonowy.Communication()
     kom.connect( port_name="/dev/ttyUSB0")
     monochromator=fotonowy.Monochromator(kom)
@@ -54,29 +54,41 @@ if __name__ == "__main__":
 
 
     monochromator.shutter_open()
-    print("Range "+ str(potentiostat.set_range(3)))
-    potentiostat.set_avg(10)
+    print("Range "+ str(potentiostat.set_range(5)))
+    potentiostat.set_avg(20)
     potentiostat.set_freq(1000)
-    potentiostat.set_volt(0,10,3.5)
+    potentiostat.set_volt(0)#,10,3.5)
+    kom.write_command_stdr("LOCKIN 200 0", 250)
     kom.write_command_stdr("START", 249)
-    time.sleep(25)
+    time.sleep(0.5)
     kom.write_command_stdr("STOP", 249)
     time.sleep(0.1)
-    print(kom.data)
+
     #for i in range(10):
     #   print(potentiostat.get_current_value()*1e9)
 
     root = Tk.Tk()
-    root.wm_title("Embedding in TK")
+    root.wm_title("PLOT")
 
     f = Figure(figsize=(5, 4), dpi=100)
     a = f.add_subplot(111)
     t = np.arange(len(kom.data))*potentiostat.time_multiplier
-    s = np.array(kom.data)*potentiostat.range_multiplier
+    s = np.array(kom.data)[:,0]#*potentiostat.range_multiplier
+    f1 = np.array(kom.data)[:,1]
+    f2 = np.array(kom.data)[:,2]
+    f3 = np.array(kom.data)[:,3]
 
-
-
+    print(s)
     print(len(kom.data))
+
+
+    # save data to text file
+
+    timestamp = time.strftime("%Y%m%d-%H%M%S")
+
+    np.savetxt('raw_data_' + timestamp + '.txt', np.c_[t,s], header='# t[s] \t U[V]')
+
+
     a.plot(t, s) #, np.sin(2 * np.pi * t / 50),t , np.cos(2 * np.pi * t / 50))
 
     # a tk.DrawingArea

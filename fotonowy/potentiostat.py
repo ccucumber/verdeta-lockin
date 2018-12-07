@@ -11,7 +11,7 @@ class Potentiostat:
     address = 250
     kom = None
     range_multiplier = 1e-9
-    time_multiplier = 1e-3
+    time_multiplier = 5e-3
     _freq=1000
     _avg=20
 
