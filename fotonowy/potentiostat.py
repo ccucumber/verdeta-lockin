@@ -102,9 +102,10 @@ class Potentiostat:
 
         if value>=0 and value <= 1000:
             if value==0:    trace.debug("Set FREQ 0 - sine lockin mode enabled")
-            else:           trace.debug("Set FREQ " + str(int(value)))
-            self._freq = value
-            self.time_multiplier = 1. / self._freq * self._avg
+            else:
+                self._freq = value
+                self.time_multiplier = 1. / self._freq * self._avg
+            trace.debug("Set FREQ " + str(int(value)))
             self.kom.write_command_stdr("FREQ " + str(int(value)), self.address-1)
         else:
             trace.error("FREQ not in range")

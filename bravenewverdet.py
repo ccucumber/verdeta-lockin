@@ -42,9 +42,13 @@ def meas_diff():
     potentiostat.io_clear(3)
     return result
 
-def meas_lockin_a(kom,t):
-    kom.write_command_stdr("VOLT 0 200 3500", 249)
+def meas_lockin_a(kom,pot,t,amp,offs):
+
+
+    pot.set_freq(0)
+    kom.write_command_stdr("CEOFF 0", 249)
     kom.data=[]
+    pot.set_volt(offs,15,amp)
     kom.write_command_stdr("START", 249)
     time.sleep(t)
     kom.write_command_stdr("STOP", 249)
@@ -69,9 +73,10 @@ def meas_lockin_a(kom,t):
                 break
 
     s=s[start:]
-    start=0
+
     first = s[0, 1]
-    trace.debug("Start index: "+str(start))
+    trace.info("Start index: "+str(start))
+    start = 0
 
     for i in range(len(s)):
         if s[i, 1] != first:
@@ -83,12 +88,12 @@ def meas_lockin_a(kom,t):
                     start=i
                     stop=i
                     osc_count+=1
-                    trace.debug("Found osc prd="+str(start-mid))
+                    trace.info("Found osc prd="+str(start-mid))
                 else:
                     trace.error("Inconsistent prd: "+str(start)+" "+str(mid)+" "+str(stop))
             mid = i
     trace.info("Oscillations: "+str(osc_count)+" Samples left: "+str(len(s)-stop))
-
+    #stop=len(s)
     mult=2*(s[:stop,1]-0.5)
     sig=s[:stop,0]
 
@@ -96,7 +101,9 @@ def meas_lockin_a(kom,t):
 
     timestamp = time.strftime("%Y%m%d-%H%M%S")
 
-    np.savetxt('probe_' + str(osc_count) + " "+ timestamp + '.txt',  np.c_[sig,mult,s[:stop,1]], header='U[V] Status')
+    #np.savetxt('probe_' + str(osc_count) + "_"+ timestamp + '.txt',  np.c_[sig,mult,s[:stop,1]], header='U[V] Status')
+    np.savetxt('analog.txt', np.c_[sig, mult, s[:stop, 1]],
+               header='U[V] Status')
 
     return np.dot(sig,mult)/stop
 
@@ -164,7 +171,7 @@ def meas_lockin_d(kom,t):
 if __name__ == "__main__":
     trace.basicConfig(format="[%(asctime)s](%(module)s:%(funcName)s:%(lineno)d) %(message)s",
                       datefmt='%I:%M:%S',
-                      level=trace.DEBUG)
+                      level=trace.INFO)
     kom = fotonowy.Communication()
     kom.connect( port_name="/dev/ttyUSB0")
     monochromator=fotonowy.Monochromator(kom)
@@ -173,12 +180,14 @@ if __name__ == "__main__":
 
     monochromator.shutter_open()
     print("Range "+ str(potentiostat.set_range(2)))
-    potentiostat.set_avg(10)
-    potentiostat.set_freq(1000)
-    kom.write_command_stdr("CEOFF 3", 249)
-    #potentiostat.set_volt(0,10,3.5)
+    potentiostat.set_avg(1)
+    potentiostat.set_freq(0)
+    #kom.write_command_stdr("CEOFF 3", 249)
+    #potentiostat.set_volt(0,55,3.5)
 
 
-    for i in range(10):
-        #potentiostat.set_volt(i/2.5)
-        print(meas_lockin_a(kom,0.5))
+    for i in range(1,10):
+
+        print(meas_lockin_a(kom,potentiostat,1.9,2,i/2.5))
+
+    kom.disconnect()
