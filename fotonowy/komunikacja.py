@@ -218,7 +218,7 @@ class Communication(object):
         thread. Function also updates necessary parameters for
         this class
         """
-        data = bytearray()
+        self.rawdata = bytearray()
         while not self._done:
 
             # if incoming bytes are waiting to be
@@ -226,13 +226,15 @@ class Communication(object):
             if self._handle.inWaiting():
                 # read and remove all whitespaces
                 # on the right side, including '\n'
-                data.extend( self._handle.read(self._handle.inWaiting()))
-                line,sep,rest=tuple(data.partition(b'\r'))
-                if sep == b'\r':
+                self.rawdata.extend( self._handle.read(self._handle.inWaiting()))
+
+                while True:
+                    line,sep,rest=tuple(self.rawdata.partition(b'\r'))
+                    if sep != b'\r':
+                        break
                     trace.debug("new data to parse: " + str(line))
                     self.read_line(line.strip())
-                    data=rest
-
+                    self.rawdata=rest
 
             # sleep for a moment (pseudo-yield in python)
-            time.sleep(0.001)
+            time.sleep(0.0001)
